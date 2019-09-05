@@ -115,7 +115,132 @@ func main() {
 }
 ```
 
+### Asを使ってみる
 
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+type InvalidChar struct {
+	err error
+}
+
+func (ic *InvalidChar) Error() string {
+	ic.err = errors.New("INVALID CHARACTER")
+	return fmt.Errorf("%w", ic.err).Error()
+}
+
+type EOF struct {
+	err error
+}
+
+func (e *EOF) Error() string {
+	e.err = errors.New("EOF")
+	return fmt.Errorf("%w", e.err).Error()
+}
+
+func mustFailParse() error {
+	return &InvalidChar{}
+}
+
+func main() {
+	err := mustFailParse()
+	if ierr, ok := err.(*InvalidChar); ok {
+		fmt.Println(ierr) // INVALID CHARACTER
+	}
+}
+
+```
+
+```go
+func main() {
+	err := mustFailParse()
+	var ierr *InvalidChar
+	if errors.As(err, &ierr) {
+		fmt.Println(ierr) // INVALID CHARACTER
+	}
+}
+```
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+type InvalidChar struct {
+	err error
+}
+
+func (ic *InvalidChar) Error() string {
+	ic.err = errors.New("INVALID CHARACTER")
+	return fmt.Errorf("%w", ic.err).Error()
+}
+
+type EOF struct {
+	err error
+}
+
+func (e *EOF) Error() string {
+	e.err = errors.New("EOF")
+	return fmt.Errorf("%w", e.err).Error()
+}
+
+func mustFailParse() error {
+	return &InvalidChar{}
+}
+
+func wrappedError() error {
+	err := mustFailParse()
+	return fmt.Errorf("%w", err)
+}
+
+func main() {
+	err := wrappedError()
+	if ierr, ok := err.(*InvalidChar); ok {
+		fmt.Println(ierr) // 何も出力されない
+	}
+}
+```
+
+```go
+func main() {
+	err := wrappedError()
+	var ierr *InvalidChar
+	if errors.As(err, &ierr) {
+		fmt.Println(ierr) // INVALID CHARACTER
+	}
+}
+```
+
+`Is`と同様にwrapしたときのエラーハンドリングを正しく行うために`As`が使われる。
+
+### Unwrapを触ってみる
+
+```go
+func main() {
+	err := wrappedError()
+	fmt.Printf("Type:%T\nValue:%v\n", err, err)
+    // Type:*fmt.wrapError
+    // Value:INVALID CHARACTER
+
+	err = errors.Unwrap(err)
+	fmt.Printf("Type:%T\nValue:%v\n", err, err)
+    // Type:*main.InvalidChar
+    // Value:INVALID CHARACTER
+
+	err = errors.Unwrap(err)
+	fmt.Printf("Type:%T\nValue:%v\n", err, err)
+    // Type:<nil>
+    // Value:<nil>
+}
+```
 
 ## References
 - [Go 1\.13 is released \- The Go Blog](https://blog.golang.org/go1.13)
